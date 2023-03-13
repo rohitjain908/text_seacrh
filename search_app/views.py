@@ -78,21 +78,21 @@ def search(request, inputText):
     for valueObject in DictKeyValue.objects.all():
         distance = editDistance(inputText, valueObject.value)
         keyObject =  valueObject.container
-        type = keyObject.type
+        type = keyObject.type.lower()
 
-        if type.lower() == 'name':
+        if type == 'name':
             if distance < threshold:
                 products = Product.objects.all().filter(name = keyObject.name)
                 for product in products:
                     filterProductsID.add(product.id)
 
-        elif type.lower() == 'category':
+        elif type == 'category':
             if distance < threshold:
                 products = Product.objects.all().filter(category = keyObject.name)
                 for product in products:
                     filterProductsID.add(product.id)
 
-        elif type.lower() == 'brand':
+        elif type == 'brand':
             if distance < threshold:
                 products = Product.objects.all().filter(brand = keyObject.name)
                 for product in products:
