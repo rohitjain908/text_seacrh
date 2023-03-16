@@ -67,33 +67,130 @@ def editDistance(str1, str2):
 #     return render(request, 'index.html', {'products' : filterProducts})
 
 
-##version-2
+#version-2(key-value mapping)
+
+
+# def search(request, inputText):
+#     filterProductsID = set()
+
+#     threshold = 2
+
+#     for valueObject in DictKeyValue.objects.all():
+#         distance = editDistance(inputText, valueObject.value)
+#         keyObject =  valueObject.container
+#         type = keyObject.type.lower()
+
+
+#         if type == 'name':
+#             if distance < threshold:
+#                 products = Product.objects.all().filter(name = keyObject.name)
+#                 for product in products:
+#                     filterProductsID.add(product.id)
+
+#         elif type == 'category':
+#             #print("here ", valueObject.value, distance, inputText)
+#             if distance < threshold:
+                
+#                 products = Product.objects.all().filter(category = keyObject.name)
+#                 for product in products:
+#                     filterProductsID.add(product.id)
+
+#         elif type == 'brand':
+#             if distance < threshold:
+#                 products = Product.objects.all().filter(brand = keyObject.name)
+#                 for product in products:
+#                     filterProductsID.add(product.id)
+
+
+        
+
+#     filterProducts = []
+#     for id in filterProductsID:
+#         filterProducts.append(Product.objects.get(id = id))
+
+
+
+#     return render(request, 'index.html', {'products' : filterProducts})
+
+
+
+##version-3 (soundex algoritham with key value mapping)
+    
+
+def soundexCode(word):
+
+    mapping = dict()
+
+    mapping['a'] = mapping['e'] = mapping['i'] = mapping['o'] \
+    = mapping['u'] = mapping['h'] = mapping['w'] = mapping['y'] = '0'
+
+    mapping['b'] = mapping['f'] = mapping['p'] = mapping['v'] = '1'
+
+    mapping['c'] = mapping['g'] = mapping['j'] = mapping['k'] \
+    = mapping['q'] = mapping['s'] = mapping['x'] = mapping['z'] = '2'
+
+    mapping['d'] = mapping['t'] = '3'
+
+    mapping['l'] = '4'
+
+    mapping['m'] = mapping['n'] = '5'
+
+    mapping['r'] = '6'
+
+
+    code = word[0].upper()
+    codeLength = 1
+
+
+    for i in range(1, len(word)):
+        c = word[i].lower()
+        if c >= 'a' and c <= 'z':
+            if mapping[c] != '0':
+                if mapping[c] != code[codeLength - 1]:
+                    code = code + mapping[c]
+                    codeLength = codeLength + 1
+
+                if codeLength > 3:
+                    break
+
+    
+    if codeLength <= 3:
+        while codeLength <= 3:
+            code = code + "0"
+            codeLength = codeLength + 1
+
+    return code
+
+
+
+
+
 
 
 def search(request, inputText):
     filterProductsID = set()
 
-    threshold = 2
+    inputCode = soundexCode(inputText)
 
     for valueObject in DictKeyValue.objects.all():
-        distance = editDistance(inputText, valueObject.value)
+        objectCode = soundexCode(valueObject.value)
         keyObject =  valueObject.container
         type = keyObject.type.lower()
 
         if type == 'name':
-            if distance < threshold:
+            if inputCode == objectCode:
                 products = Product.objects.all().filter(name = keyObject.name)
                 for product in products:
                     filterProductsID.add(product.id)
 
         elif type == 'category':
-            if distance < threshold:
+            if inputCode == objectCode:
                 products = Product.objects.all().filter(category = keyObject.name)
                 for product in products:
                     filterProductsID.add(product.id)
 
         elif type == 'brand':
-            if distance < threshold:
+            if inputCode == objectCode:
                 products = Product.objects.all().filter(brand = keyObject.name)
                 for product in products:
                     filterProductsID.add(product.id)
@@ -108,7 +205,14 @@ def search(request, inputText):
 
 
     return render(request, 'index.html', {'products' : filterProducts})
-    
+
+
+
+
+   
+
+
+
 
 
 
