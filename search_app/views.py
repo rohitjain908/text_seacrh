@@ -232,8 +232,8 @@ def editDistanceWithDifferentCost(str1, str2):
     str2 = str2.lower()
     a = len(str1)
     b = len(str2)
-    x = 2
-    y = 2
+    x = 0.2
+    y = 0.2
     string_matrix = [[0.0 for i in range(b+1)] for i in range(a+1)]
     for i in range(a+1):
         for j in range(b+1):
@@ -246,77 +246,113 @@ def editDistanceWithDifferentCost(str1, str2):
             else:
                 string_matrix[i][j] =  min(string_matrix[i][j-1] + x,      # insert operation
                                        string_matrix[i-1][j] + y,      # remove operation
-                                        distance(str1[i - 1], str2[j - 1]) + string_matrix[i-1][j-1])    # replace operation
+                                        distance(str1[i - 1], str2[j - 1])*0.1 + string_matrix[i-1][j-1])    # replace operation
     return string_matrix[a][b]
 
 
-def ok(totalCost, costBetweenCode, costBetweenWords):
-    if totalCost < 17 and costBetweenCode < 3 and costBetweenWords < 15:
-        return True
-    return False
 
+
+def cost(costBetweenCode, costBetweenWords, wordCode, keywordCode):
+    Max = 2.5
+    if costBetweenCode == 0:
+        return 0
+    
+    
+    c1 = wordCode[0].lower()
+    c2 = keywordCode[0].lower()
+    
+    if c1 != c2:
+        if distance(c1, c2) > 1:
+            return Max
+        
+
+    
+    return costBetweenCode + costBetweenWords
+
+
+## for a word:-
+## will take the minimum cost from all keyword related to a product
+
+## then add the distance of all words cost
 
 def search(request, inputText):
-    filterProductsID = set()
     splitWords = splitString(inputText)
+    costOfProducts = dict()
 
+    sumOfCost = dict()
+    minimumOfCost = dict()
+    
     for word in splitWords:
         wordCode = soundexCode(word)
 
+
         for valueObject in DictKeyValue.objects.all():
-            objectCode = soundexCode(valueObject.value)
             keyObject =  valueObject.container
-            type = keyObject.type.lower()
-            costBetweenWords = editDistanceWithDifferentCost(word, valueObject.value)
-            costBetweenCode = editDistance(wordCode, objectCode)
+            keyword = valueObject.value
+            typeOfKeyword = keyObject.type.lower()
 
-
+            keywordCode = soundexCode(keyword)
             
-            totalCost = costBetweenCode + costBetweenWords
-            if type == 'name':
-                if ok(totalCost, costBetweenCode, costBetweenWords):
+            costBetweenWords = editDistanceWithDifferentCost(word, keyword)
+            costBetweenCode = editDistance(wordCode, keywordCode)
+
+            products = []
+
+            totalCost = cost(costBetweenCode , costBetweenWords, wordCode, keywordCode)
+            if typeOfKeyword == 'name':
                     products = Product.objects.all().filter(name = keyObject.name)
-                    for product in products:
-                        filterProductsID.add(product.id)
+                        
 
-            elif type == 'category':
-                if ok(totalCost, costBetweenCode, costBetweenWords):
+            elif typeOfKeyword == 'category':
                     products = Product.objects.all().filter(category = keyObject.name)
-                    for product in products:
-                        filterProductsID.add(product.id)
-
-            elif type == 'brand':
-                if ok(totalCost, costBetweenCode, costBetweenWords):
+                    
+                    
+            elif typeOfKeyword == 'brand':
                     products = Product.objects.all().filter(brand = keyObject.name)
-                    for product in products:
-                        filterProductsID.add(product.id)
-
-            elif type == 'subcategory':
-                if ok(totalCost, costBetweenCode, costBetweenWords):
+                    
+                   
+            elif typeOfKeyword == 'subcategory':
                     products = Product.objects.all().filter(subCategory = keyObject.name)
-                    for product in products:
-                        filterProductsID.add(product.id)
 
-            # if wordCode == objectCode:
-            #     print(valueObject.value)
-
-    filterProducts = []
-    for id in filterProductsID:
-        filterProducts.append(Product.objects.get(id = id))
+            for product in products:
+                productId = product.id
+                if productId in costOfProducts.keys():
+                    costOfProducts[productId] = min(costOfProducts[productId], totalCost)
+                else:
+                    costOfProducts[productId] = totalCost
 
 
 
-    return render(request, 'index.html', {'products' : filterProducts})
+        for productId in costOfProducts.keys():
+            if productId in sumOfCost.keys():
+                sumOfCost[productId] = sumOfCost[productId] + costOfProducts[productId]
+            else:
+                sumOfCost[productId] = costOfProducts[productId]
+
+            if productId in minimumOfCost.keys():
+                minimumOfCost[productId] = min(minimumOfCost[productId], costOfProducts[productId])
+            else:
+                minimumOfCost[productId] = costOfProducts[productId]
+
+    
+    filterProducts = set()
+    for productId in sumOfCost.keys():
+        filterProducts.add((minimumOfCost[productId], sumOfCost[productId], productId))
+    
+    filterProducts = sorted(filterProducts)
+    Max = 2.2
+
+    productsOrder = []
+    for product in filterProducts:
+        productName = Product.objects.get(id = product[2]).name
+        print(productName, product[0], product[1])
+        if product[0] >= Max or product[1] >= Max:
+            continue
+        productsOrder.append(Product.objects.get(id = product[2]))
 
 
 
-
-   
-
-
-
-
-
+    return render(request, 'index.html', {'products' : productsOrder})
 
 
 
